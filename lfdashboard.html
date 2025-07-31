@@ -1,0 +1,1087 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced LF Assignment Dashboard</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f7fa;
+            color: #333;
+        }
+        .dashboard {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: linear-gradient(135deg, #6b73ff 0%, #000dff 100%);
+            color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .upload-section {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        .visualizations {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .full-width {
+            grid-column: 1 / -1;
+        }
+        .chart-container {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            height: 450px;
+        }
+        .data-table {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            overflow-x: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+        }
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+        button {
+            background-color: #4a6bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        button:hover {
+            background-color: #3a56d4;
+        }
+        .file-input {
+            margin: 20px 0;
+        }
+        .question-section {
+            margin-top: 30px;
+        }
+        .question-box {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        .button-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .subject-button {
+            background-color: #6bceff;
+        }
+        .workload-button {
+            background-color: #ff9e6b;
+        }
+        .pdf-button {
+            background-color: #ff4757;
+        }
+        .export-all-button {
+            background-color: #2ed573;
+        }
+        .two-columns {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        @media (max-width: 1200px) {
+            .two-columns {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <div class="header">
+            <h1>Enhanced Lab Facilitator Dashboard</h1>
+            <p>Comprehensive visualization of faculty workload and subject preferences</p>
+            <button class="export-all-button" onclick="exportAllChartsAsPDF()">Export Full Dashboard as PDF</button>
+        </div>
+
+        <div class="upload-section">
+            <h2>Upload JSON Data</h2>
+            <div class="file-input">
+                <input type="file" id="jsonFileInput" accept=".json">
+                <button onclick="loadJSON()">Load Data</button>
+            </div>
+            <div id="uploadStatus"></div>
+        </div>
+
+        <div class="visualizations">
+            <div class="two-columns">
+                <div id="willingnessChart" class="chart-container"></div>
+                <div id="workloadChart" class="chart-container"></div>
+            </div>
+            <div class="two-columns">
+                <div id="leadAvailabilityChart" class="chart-container"></div>
+                <div id="courseAlignmentChart" class="chart-container"></div>
+            </div>
+            <div id="facultyWorkloadChart" class="chart-container full-width"></div>
+            <div id="subjectAnalysisChart" class="chart-container full-width"></div>
+        </div>
+
+        <div class="question-section">
+            <h2>Faculty and Subject Analysis</h2>
+            
+            <div class="question-box">
+                <h3>Faculty by Subject Preference</h3>
+                <div class="button-group" id="subjectButtons">
+                    <!-- Buttons will be generated dynamically -->
+                </div>
+                <div id="subjectResults" class="data-table"></div>
+                <button class="pdf-button" onclick="downloadCurrentSubjectTableAsPDF()">Download Subject Faculty as PDF</button>
+            </div>
+
+            <div class="question-box">
+                <h3>Faculty Workload Analysis</h3>
+                <div class="button-group">
+                    <button class="workload-button" onclick="showHighWorkloadFaculty()">Top 10 Busiest Faculty</button>
+                    <button class="workload-button" onclick="showAvailableFaculty()">Available Faculty (0 courses)</button>
+                    <button class="workload-button" onclick="showAllFacultyWorkload()">All Faculty Workload</button>
+                </div>
+                <div id="workloadResults" class="data-table"></div>
+                <button class="pdf-button" onclick="downloadCurrentWorkloadTableAsPDF()">Download Workload Data as PDF</button>
+            </div>
+
+            <div class="question-box">
+                <h3>Detailed Faculty Information</h3>
+                <div class="button-group">
+                    <button onclick="showAllLeadLFs()">All Lead LFs</button>
+                    <button onclick="showAllComputerLFs()">All Computer Programming LFs</button>
+                    <button onclick="showAllDigitalLFs()">All Digital Electronics LFs</button>
+                </div>
+                <div id="detailedResults" class="data-table"></div>
+                <button class="pdf-button" onclick="downloadCurrentTableAsPDF()">Download Faculty Data as PDF</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize jsPDF
+        const { jsPDF } = window.jspdf;
+        
+        let jsonData = [];
+        let allSubjects = new Set();
+        let currentTableData = [];
+        let currentTableHeaders = [];
+        let currentTableTitle = "";
+        let currentSubjectTableData = [];
+        let currentSubjectTableHeaders = [];
+        let currentWorkloadTableData = [];
+        let currentWorkloadTableHeaders = [];
+
+        function loadJSON() {
+            const fileInput = document.getElementById('jsonFileInput');
+            const file = fileInput.files[0];
+            const uploadStatus = document.getElementById('uploadStatus');
+
+            if (!file) {
+                uploadStatus.innerHTML = '<p style="color:red;">Please select a JSON file first.</p>';
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    jsonData = JSON.parse(e.target.result);
+                    if (!Array.isArray(jsonData)) {
+                        jsonData = [jsonData];
+                    }
+                    
+                    // Extract all unique subjects
+                    allSubjects.clear();
+                    jsonData.forEach(item => {
+                        const courses = item['Name(s) of the courses currently teaching or assisting as LF at BITS'];
+                        if (courses) {
+                            courses.split(/,\s*/).forEach(course => {
+                                if (course.trim()) allSubjects.add(course.trim());
+                            });
+                        }
+                    });
+                    
+                    uploadStatus.innerHTML = `<p style="color:green;">Successfully loaded ${jsonData.length} records with ${allSubjects.size} unique subjects.</p>`;
+                    createVisualizations();
+                    createSubjectButtons();
+                } catch (error) {
+                    uploadStatus.innerHTML = `<p style="color:red;">Error parsing JSON: ${error.message}</p>`;
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function createVisualizations() {
+            if (jsonData.length === 0) return;
+
+            createWillingnessChart();
+            createWorkloadChart();
+            createLeadAvailabilityChart();
+            createCourseAlignmentChart();
+            createFacultyWorkloadSunburst();
+            createSubjectAnalysisChart();
+        }
+
+        function createWillingnessChart() {
+            const computerLF = jsonData.filter(item => item['Are you willing to be the LF for Computer Programming Lab?'] === 'Yes').length;
+            const computerLead = jsonData.filter(item => item['Are you willing to be the Lead LF for Computer Programming Lab?'] === 'Yes').length;
+            const digitalLF = jsonData.filter(item => item['Are you willing to be the LF for Digital Electronics and Microprocessors Lab?'] === 'Yes').length;
+            const digitalLead = jsonData.filter(item => item['Are you willing to be the Lead LF for Digital Electronics and Microprocessors Lab?'] === 'Yes').length;
+
+            const data = [
+                {
+                    x: ['Computer Programming', 'Digital Electronics'],
+                    y: [computerLF, digitalLF],
+                    name: 'Regular LF',
+                    type: 'bar',
+                    marker: { color: '#4a6bff' }
+                },
+                {
+                    x: ['Computer Programming', 'Digital Electronics'],
+                    y: [computerLead, digitalLead],
+                    name: 'Lead LF',
+                    type: 'bar',
+                    marker: { color: '#ff6b6b' }
+                }
+            ];
+
+            const layout = {
+                title: 'Willingness Distribution by Lab Type',
+                barmode: 'group',
+                xaxis: { title: 'Lab Type' },
+                yaxis: { title: 'Number of Faculty' },
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                paper_bgcolor: 'rgba(0,0,0,0)'
+            };
+
+            Plotly.newPlot('willingnessChart', data, layout);
+        }
+
+        function createWorkloadChart() {
+            const workloads = jsonData.map(item => parseInt(item['Number of courses an individual is currently teaching or assisting as an LF at BITS.']) || 0);
+            
+            const trace = {
+                x: workloads,
+                type: 'histogram',
+                marker: { color: '#6bceff' },
+                opacity: 0.7,
+                xbins: {
+                    start: 0,
+                    end: Math.max(...workloads) + 1,
+                    size: 1
+                }
+            };
+
+            const layout = {
+                title: 'Current LF Workload Distribution',
+                xaxis: {
+                    title: 'Number of Courses Currently Teaching',
+                    dtick: 1
+                },
+                yaxis: { title: 'Number of Faculty' },
+                bargap: 0.1,
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                paper_bgcolor: 'rgba(0,0,0,0)'
+            };
+
+            Plotly.newPlot('workloadChart', [trace], layout);
+        }
+
+        function createLeadAvailabilityChart() {
+            const totalFaculty = jsonData.length;
+            const computerLead = jsonData.filter(item => item['Are you willing to be the Lead LF for Computer Programming Lab?'] === 'Yes').length;
+            const digitalLead = jsonData.filter(item => item['Are you willing to be the Lead LF for Digital Electronics and Microprocessors Lab?'] === 'Yes').length;
+            const bothLead = jsonData.filter(item => 
+                item['Are you willing to be the Lead LF for Computer Programming Lab?'] === 'Yes' && 
+                item['Are you willing to be the Lead LF for Digital Electronics and Microprocessors Lab?'] === 'Yes'
+            ).length;
+
+            const data = [{
+                values: [
+                    computerLead - bothLead, 
+                    digitalLead - bothLead, 
+                    bothLead, 
+                    totalFaculty - computerLead - digitalLead + bothLead
+                ],
+                labels: [
+                    'Only Computer Lead', 
+                    'Only Digital Lead', 
+                    'Both Labs Lead', 
+                    'Not Willing for Lead'
+                ],
+                type: 'pie',
+                marker: {
+                    colors: ['#4a6bff', '#ff6b6b', '#9b59b6', '#dddddd']
+                },
+                hole: 0.4,
+                textinfo: 'label+percent'
+            }];
+
+            const layout = {
+                title: 'Lead LF Availability (Detailed)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                paper_bgcolor: 'rgba(0,0,0,0)'
+            };
+
+            Plotly.newPlot('leadAvailabilityChart', data, layout);
+        }
+
+        function createCourseAlignmentChart() {
+            const courseCounts = {};
+            
+            jsonData.forEach(item => {
+                const courses = item['Name(s) of the courses currently teaching or assisting as LF at BITS'];
+                if (courses) {
+                    courses.split(/,\s*/).forEach(course => {
+                        if (course.trim()) {
+                            courseCounts[course.trim()] = (courseCounts[course.trim()] || 0) + 1;
+                        }
+                    });
+                }
+            });
+
+            const courses = Object.keys(courseCounts);
+            const counts = Object.values(courseCounts);
+            
+            const data = [{
+                type: 'treemap',
+                labels: courses,
+                parents: courses.map(() => 'Courses'),
+                values: counts,
+                marker: {
+                    colors: courses.map((_, i) => `hsl(${i * 360 / courses.length}, 70%, 50%)`)
+                },
+                textinfo: 'label+value',
+                branchvalues: 'total'
+            }];
+
+            const layout = {
+                title: 'Current Courses Being Taught (Domain Alignment)',
+                margin: {l: 0, r: 0, b: 0, t: 30},
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                paper_bgcolor: 'rgba(0,0,0,0)'
+            };
+
+            Plotly.newPlot('courseAlignmentChart', data, layout);
+        }
+
+        function createFacultyWorkloadSunburst() {
+            // Prepare data for sunburst chart
+            const facultyData = jsonData.map(item => {
+                return {
+                    name: item.Name || 'Unknown',
+                    workload: parseInt(item['Number of courses an individual is currently teaching or assisting as an LF at BITS.']) || 0,
+                    courses: item['Name(s) of the courses currently teaching or assisting as LF at BITS'] || 'None'
+                };
+            });
+
+            // Create hierarchical structure for sunburst
+            const labels = [];
+            const parents = [];
+            const values = [];
+            const customdata = []; // To store additional info for hover
+
+            // Add root
+            labels.push('All Faculty');
+            parents.push('');
+            values.push(facultyData.length);
+            customdata.push('Total faculty: ' + facultyData.length);
+
+            // Add workload levels
+            const workloadLevels = [0, 1, 2, 3, 4, 5];
+            workloadLevels.forEach(level => {
+                const facultyAtLevel = facultyData.filter(f => f.workload === level);
+                labels.push(`Workload: ${level} courses`);
+                parents.push('All Faculty');
+                values.push(facultyAtLevel.length);
+                customdata.push(`${facultyAtLevel.length} faculty with ${level} courses`);
+
+                // Add individual faculty for this workload level
+                facultyAtLevel.forEach(faculty => {
+                    labels.push(faculty.name);
+                    parents.push(`Workload: ${level} courses`);
+                    values.push(1);
+                    customdata.push(`Courses: ${faculty.courses}<br>Workload: ${level}`);
+                });
+            });
+
+            const data = [{
+                type: 'sunburst',
+                labels: labels,
+                parents: parents,
+                values: values,
+                customdata: customdata,
+                hovertemplate: '<b>%{label}</b><br>%{customdata}<extra></extra>',
+                marker: {
+                    colors: labels.map(label => {
+                        if (label === 'All Faculty') return '#636efa';
+                        if (label.startsWith('Workload:')) {
+                            const level = parseInt(label.split(':')[1]);
+                            return `hsl(${120 - level * 20}, 70%, 50%)`;
+                        }
+                        return '#dddddd';
+                    })
+                },
+                branchvalues: 'total',
+                maxdepth: 2
+            }];
+
+            const layout = {
+                title: 'Faculty Workload Hierarchy (Click to drill down)',
+                margin: {l: 0, r: 0, b: 0, t: 40},
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                paper_bgcolor: 'rgba(0,0,0,0)'
+            };
+
+            Plotly.newPlot('facultyWorkloadChart', data, layout);
+        }
+
+        function createSubjectAnalysisChart() {
+            // Count subjects among faculty
+            const subjectCounts = {};
+            Array.from(allSubjects).forEach(subject => {
+                subjectCounts[subject] = 0;
+            });
+
+            jsonData.forEach(item => {
+                const courses = item['Name(s) of the courses currently teaching or assisting as LF at BITS'];
+                if (courses) {
+                    courses.split(/,\s*/).forEach(course => {
+                        if (course.trim()) subjectCounts[course.trim()]++;
+                    });
+                }
+            });
+
+            // Prepare data for horizontal bar chart
+            const subjects = Object.keys(subjectCounts).filter(s => subjectCounts[s] > 0);
+            const counts = subjects.map(s => subjectCounts[s]);
+
+            // Sort by count descending
+            const sortedIndices = [...Array(subjects.length).keys()].sort((a, b) => counts[b] - counts[a]);
+            const sortedSubjects = sortedIndices.map(i => subjects[i]);
+            const sortedCounts = sortedIndices.map(i => counts[i]);
+
+            const data = [{
+                type: 'bar',
+                y: sortedSubjects,
+                x: sortedCounts,
+                orientation: 'h',
+                marker: {
+                    color: sortedSubjects.map((_, i) => `hsl(${i * 360 / subjects.length}, 70%, 50%)`)
+                }
+            }];
+
+            const layout = {
+                title: 'Subject Distribution Among Faculty',
+                xaxis: { title: 'Number of Faculty Teaching' },
+                yaxis: { title: 'Subject', automargin: true },
+                margin: { l: 150, r: 50, b: 50, t: 50 },
+                height: Math.max(400, subjects.length * 20),
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                paper_bgcolor: 'rgba(0,0,0,0)'
+            };
+
+            Plotly.newPlot('subjectAnalysisChart', data, layout);
+        }
+
+        function createSubjectButtons() {
+            const container = document.getElementById('subjectButtons');
+            container.innerHTML = '';
+            
+            Array.from(allSubjects).sort().forEach(subject => {
+                const button = document.createElement('button');
+                button.className = 'subject-button';
+                button.textContent = subject;
+                button.onclick = () => showFacultyBySubject(subject);
+                container.appendChild(button);
+            });
+        }
+
+        // Question Answering Functions
+        function showFacultyBySubject(subject) {
+            const results = jsonData.filter(item => {
+                const courses = item['Name(s) of the courses currently teaching or assisting as LF at BITS'];
+                return courses && courses.split(/,\s*/).some(c => c.trim() === subject);
+            });
+            
+            currentSubjectTableData = results;
+            currentSubjectTableHeaders = [
+                'Name', 
+                'Mobile number', 
+                'BITS Email ID', 
+                'Personal Email ID',
+                'Current Courses',
+                'Courses Teaching'
+            ];
+            
+            displayResults('subjectResults', results, currentSubjectTableHeaders, false, 'subject');
+        }
+
+        function showHighWorkloadFaculty() {
+            const results = [...jsonData].sort((a, b) => {
+                const aWorkload = parseInt(a['Number of courses an individual is currently teaching or assisting as an LF at BITS.']) || 0;
+                const bWorkload = parseInt(b['Number of courses an individual is currently teaching or assisting as an LF at BITS.']) || 0;
+                return bWorkload - aWorkload;
+            }).slice(0, 10);
+            
+            currentWorkloadTableData = results;
+            currentWorkloadTableHeaders = [
+                'Name', 
+                'Current Courses', 
+                'Courses Teaching',
+                'Computer Programming LF',
+                'Digital Electronics LF'
+            ];
+            
+            displayResults('workloadResults', results, currentWorkloadTableHeaders, false, 'workload');
+        }
+
+        function showAvailableFaculty() {
+            const results = jsonData.filter(item => 
+                (parseInt(item['Number of courses an individual is currently teaching or assisting as an LF at BITS.']) || 0) === 0
+            );
+            
+            currentWorkloadTableData = results;
+            currentWorkloadTableHeaders = [
+                'Name', 
+                'Mobile number', 
+                'Email Address',
+                'Computer Programming LF',
+                'Digital Electronics LF'
+            ];
+            
+            displayResults('workloadResults', results, currentWorkloadTableHeaders, false, 'workload');
+        }
+
+        function showAllFacultyWorkload() {
+            const results = [...jsonData].sort((a, b) => {
+                const aWorkload = parseInt(a['Number of courses an individual is currently teaching or assisting as an LF at BITS.']) || 0;
+                const bWorkload = parseInt(b['Number of courses an individual is currently teaching or assisting as an LF at BITS.']) || 0;
+                return bWorkload - aWorkload;
+            });
+            
+            currentWorkloadTableData = results;
+            currentWorkloadTableHeaders = [
+                'Name', 
+                'Current Courses', 
+                'Courses Teaching'
+            ];
+            
+            displayResults('workloadResults', results, currentWorkloadTableHeaders, false, 'workload');
+        }
+
+        function showAllLeadLFs() {
+            const results = jsonData.filter(item => 
+                item['Are you willing to be the Lead LF for Computer Programming Lab?'] === 'Yes' ||
+                item['Are you willing to be the Lead LF for Digital Electronics and Microprocessors Lab?'] === 'Yes'
+            );
+            
+            currentTableData = results;
+            currentTableHeaders = [
+                'Name',
+                'Mobile number',
+                'Email Address',
+                'Lead for Computer Programming',
+                'Lead for Digital Electronics',
+                'Current Courses',
+                'Courses Teaching'
+            ];
+            currentTableTitle = "All Lead LFs Report";
+            
+            displayResults('detailedResults', results, currentTableHeaders, true, 'detailed');
+        }
+
+        function showAllComputerLFs() {
+            const results = jsonData.filter(item => 
+                item['Are you willing to be the LF for Computer Programming Lab?'] === 'Yes' ||
+                item['Are you willing to be the Lead LF for Computer Programming Lab?'] === 'Yes'
+            );
+            
+            currentTableData = results;
+            currentTableHeaders = [
+                'Name',
+                'Mobile number',
+                'Email Address',
+                'Regular LF for Computer Programming',
+                'Lead LF for Computer Programming',
+                'Current Courses',
+                'Courses Teaching'
+            ];
+            currentTableTitle = "All Computer Programming LFs Report";
+            
+            displayResults('detailedResults', results, currentTableHeaders, true, 'detailed');
+        }
+
+        function showAllDigitalLFs() {
+            const results = jsonData.filter(item => 
+                item['Are you willing to be the LF for Digital Electronics and Microprocessors Lab?'] === 'Yes' ||
+                item['Are you willing to be the Lead LF for Digital Electronics and Microprocessors Lab?'] === 'Yes'
+            );
+            
+            currentTableData = results;
+            currentTableHeaders = [
+                'Name',
+                'Mobile number',
+                'Email Address',
+                'Regular LF for Digital Electronics',
+                'Lead LF for Digital Electronics',
+                'Current Courses',
+                'Courses Teaching'
+            ];
+            currentTableTitle = "All Digital Electronics LFs Report";
+            
+            displayResults('detailedResults', results, currentTableHeaders, true, 'detailed');
+        }
+
+        function displayResults(elementId, data, fields, isDetailedView, tableType) {
+            const container = document.getElementById(elementId);
+            
+            if (tableType === 'detailed') {
+                currentTableData = data;
+            } else if (tableType === 'workload') {
+                currentWorkloadTableData = data;
+            } else if (tableType === 'subject') {
+                currentSubjectTableData = data;
+            }
+            
+            if (data.length === 0) {
+                container.innerHTML = '<p>No results found.</p>';
+                return;
+            }
+            
+            let html = '<table><thead><tr>';
+            
+            // Create headers
+            fields.forEach(field => {
+                html += `<th>${field}</th>`;
+            });
+            
+            html += '</tr></thead><tbody>';
+            
+            // Create rows
+            data.forEach(item => {
+                html += '<tr>';
+                fields.forEach(field => {
+                    let value;
+                    
+                    // Handle custom field mappings
+                    if (field === 'Current Courses') {
+                        value = parseInt(item['Number of courses an individual is currently teaching or assisting as an LF at BITS.']) || 0;
+                    } 
+                    else if (field === 'Courses Teaching') {
+                        value = item['Name(s) of the courses currently teaching or assisting as LF at BITS'] || 'None';
+                    }
+                    else if (field === 'Lead for Computer Programming') {
+                        value = item['Are you willing to be the Lead LF for Computer Programming Lab?'] || 'No';
+                    }
+                    else if (field === 'Lead for Digital Electronics') {
+                        value = item['Are you willing to be the Lead LF for Digital Electronics and Microprocessors Lab?'] || 'No';
+                    }
+                    else if (field === 'Regular LF for Computer Programming') {
+                        value = item['Are you willing to be the LF for Computer Programming Lab?'] || 'No';
+                    }
+                    else if (field === 'Regular LF for Digital Electronics') {
+                        value = item['Are you willing to be the LF for Digital Electronics and Microprocessors Lab?'] || 'No';
+                    }
+                    else if (field === 'Computer Programming LF') {
+                        value = item['Are you willing to be the LF for Computer Programming Lab?'] || 'No';
+                    }
+                    else if (field === 'Digital Electronics LF') {
+                        value = item['Are you willing to be the LF for Digital Electronics and Microprocessors Lab?'] || 'No';
+                    }
+                    else {
+                        value = item[field] || 'N/A';
+                    }
+                    
+                    // Format phone numbers (without hyphens)
+                    if (field.toLowerCase().includes('mobile') || field.toLowerCase().includes('phone')) {
+                        const phone = value ? value.toString() : '';
+                        html += `<td>${phone.replace(/\D/g, '')}</td>`;
+                    } else {
+                        html += `<td>${value}</td>`;
+                    }
+                });
+                html += '</tr>';
+            });
+            
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+
+        function downloadCurrentTableAsPDF() {
+            if (currentTableData.length === 0) {
+                alert('No data available to export');
+                return;
+            }
+
+            // Prepare data for PDF
+            const doc = new jsPDF();
+            const title = currentTableTitle || "Faculty Information Report";
+            const date = new Date().toLocaleDateString();
+            
+            // Add title and date
+            doc.setFontSize(18);
+            doc.text(title, 14, 15);
+            doc.setFontSize(10);
+            doc.text(`Generated on: ${date}`, 14, 22);
+            
+            // Prepare data for the table
+            const tableData = currentTableData.map(item => {
+                return currentTableHeaders.map(header => {
+                    // Handle custom field mappings
+                    if (header === 'Current Courses') {
+                        return parseInt(item['Number of courses an individual is currently teaching or assisting as an LF at BITS.']) || 0;
+                    } 
+                    else if (header === 'Courses Teaching') {
+                        return item['Name(s) of the courses currently teaching or assisting as LF at BITS'] || 'None';
+                    }
+                    else if (header === 'Lead for Computer Programming') {
+                        return item['Are you willing to be the Lead LF for Computer Programming Lab?'] || 'No';
+                    }
+                    else if (header === 'Lead for Digital Electronics') {
+                        return item['Are you willing to be the Lead LF for Digital Electronics and Microprocessors Lab?'] || 'No';
+                    }
+                    else if (header === 'Regular LF for Computer Programming') {
+                        return item['Are you willing to be the LF for Computer Programming Lab?'] || 'No';
+                    }
+                    else if (header === 'Regular LF for Digital Electronics') {
+                        return item['Are you willing to be the LF for Digital Electronics and Microprocessors Lab?'] || 'No';
+                    }
+                    else {
+                        // Format phone numbers without hyphens
+                        if (header.toLowerCase().includes('mobile') || header.toLowerCase().includes('phone')) {
+                            const phone = item[header] ? item[header].toString() : '';
+                            return phone.replace(/\D/g, '');
+                        }
+                        return item[header] || 'N/A';
+                    }
+                });
+            });
+
+            // Add the table
+            doc.autoTable({
+                head: [currentTableHeaders],
+                body: tableData,
+                startY: 30,
+                styles: {
+                    fontSize: 8,
+                    cellPadding: 3,
+                    overflow: 'linebreak'
+                },
+                columnStyles: {
+                    0: {cellWidth: 25},
+                    1: {cellWidth: 20},
+                    2: {cellWidth: 35},
+                    3: {cellWidth: 20},
+                    4: {cellWidth: 20},
+                    5: {cellWidth: 15},
+                    6: {cellWidth: 'auto'}
+                }
+            });
+
+            // Save the PDF
+            doc.save('faculty_information_report.pdf');
+        }
+
+        function downloadCurrentWorkloadTableAsPDF() {
+            if (currentWorkloadTableData.length === 0) {
+                alert('No workload data available to export');
+                return;
+            }
+
+            const doc = new jsPDF();
+            const title = "Faculty Workload Report";
+            const date = new Date().toLocaleDateString();
+            
+            doc.setFontSize(18);
+            doc.text(title, 14, 15);
+            doc.setFontSize(10);
+            doc.text(`Generated on: ${date}`, 14, 22);
+            
+            const tableData = currentWorkloadTableData.map(item => {
+                return currentWorkloadTableHeaders.map(header => {
+                    if (header === 'Current Courses') {
+                        return parseInt(item['Number of courses an individual is currently teaching or assisting as an LF at BITS.']) || 0;
+                    }
+                    else if (header === 'Courses Teaching') {
+                        return item['Name(s) of the courses currently teaching or assisting as LF at BITS'] || 'None';
+                    }
+                    else if (header === 'Computer Programming LF') {
+                        return item['Are you willing to be the LF for Computer Programming Lab?'] || 'No';
+                    }
+                    else if (header === 'Digital Electronics LF') {
+                        return item['Are you willing to be the LF for Digital Electronics and Microprocessors Lab?'] || 'No';
+                    }
+                    else if (header.toLowerCase().includes('mobile') || header.toLowerCase().includes('phone')) {
+                        const phone = item[header] ? item[header].toString() : '';
+                        return phone.replace(/\D/g, '');
+                    }
+                    return item[header] || 'N/A';
+                });
+            });
+
+            doc.autoTable({
+                head: [currentWorkloadTableHeaders],
+                body: tableData,
+                startY: 30,
+                styles: {
+                    fontSize: 8,
+                    cellPadding: 3,
+                    overflow: 'linebreak'
+                },
+                columnStyles: {
+                    0: {cellWidth: 25},
+                    1: {cellWidth: 15},
+                    2: {cellWidth: 'auto'},
+                    3: {cellWidth: 20},
+                    4: {cellWidth: 20}
+                }
+            });
+
+            doc.save('faculty_workload_report.pdf');
+        }
+
+        function downloadCurrentSubjectTableAsPDF() {
+            if (currentSubjectTableData.length === 0) {
+                alert('No subject data available to export');
+                return;
+            }
+
+            const doc = new jsPDF();
+            const title = "Faculty by Subject Report";
+            const date = new Date().toLocaleDateString();
+            
+            doc.setFontSize(18);
+            doc.text(title, 14, 15);
+            doc.setFontSize(10);
+            doc.text(`Generated on: ${date}`, 14, 22);
+            
+            const tableData = currentSubjectTableData.map(item => {
+                return currentSubjectTableHeaders.map(header => {
+                    if (header === 'Current Courses') {
+                        return parseInt(item['Number of courses an individual is currently teaching or assisting as an LF at BITS.']) || 0;
+                    }
+                    else if (header === 'Courses Teaching') {
+                        return item['Name(s) of the courses currently teaching or assisting as LF at BITS'] || 'None';
+                    }
+                    else if (header.toLowerCase().includes('mobile') || header.toLowerCase().includes('phone')) {
+                        const phone = item[header] ? item[header].toString() : '';
+                        return phone.replace(/\D/g, '');
+                    }
+                    return item[header] || 'N/A';
+                });
+            });
+
+            doc.autoTable({
+                head: [currentSubjectTableHeaders],
+                body: tableData,
+                startY: 30,
+                styles: {
+                    fontSize: 8,
+                    cellPadding: 3,
+                    overflow: 'linebreak'
+                },
+                columnStyles: {
+                    0: {cellWidth: 25},
+                    1: {cellWidth: 20},
+                    2: {cellWidth: 35},
+                    3: {cellWidth: 35},
+                    4: {cellWidth: 15},
+                    5: {cellWidth: 'auto'}
+                }
+            });
+
+            doc.save('faculty_by_subject_report.pdf');
+        }
+
+        async function exportAllChartsAsPDF() {
+            if (jsonData.length === 0) {
+                alert('Please load data first');
+                return;
+            }
+
+            const doc = new jsPDF();
+            const date = new Date().toLocaleDateString();
+            
+            // Add title page
+            doc.setFontSize(24);
+            doc.text('Lab Facilitator Dashboard Report', 105, 40, { align: 'center' });
+            doc.setFontSize(16);
+            doc.text(`Generated on: ${date}`, 105, 50, { align: 'center' });
+            doc.setFontSize(12);
+            doc.text(`Total Faculty: ${jsonData.length}`, 105, 60, { align: 'center' });
+            doc.text(`Unique Subjects: ${allSubjects.size}`, 105, 70, { align: 'center' });
+            doc.addPage();
+
+            // Capture charts as images and add to PDF
+            const chartIds = [
+                'willingnessChart', 
+                'workloadChart', 
+                'leadAvailabilityChart', 
+                'courseAlignmentChart',
+                'facultyWorkloadChart',
+                'subjectAnalysisChart'
+            ];
+
+            for (const chartId of chartIds) {
+                const chartElement = document.getElementById(chartId);
+                const canvas = await html2canvas(chartElement);
+                const imgData = canvas.toDataURL('image/png');
+                
+                // Add chart to PDF
+                const imgProps = doc.getImageProperties(imgData);
+                const pdfWidth = doc.internal.pageSize.getWidth() - 20;
+                const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+                
+                doc.addImage(imgData, 'PNG', 10, 10, pdfWidth, pdfHeight);
+                doc.addPage();
+            }
+
+            // Add all tables to the PDF
+            const tableConfigs = [
+                { title: "All Lead LFs", data: jsonData.filter(item => 
+                    item['Are you willing to be the Lead LF for Computer Programming Lab?'] === 'Yes' ||
+                    item['Are you willing to be the Lead LF for Digital Electronics and Microprocessors Lab?'] === 'Yes'
+                ), headers: [
+                    'Name', 'Mobile', 'Email', 
+                    'Lead (Computer)', 'Lead (Digital)', 
+                    'Current Courses', 'Courses Teaching'
+                ]},
+                { title: "All Computer Programming LFs", data: jsonData.filter(item => 
+                    item['Are you willing to be the LF for Computer Programming Lab?'] === 'Yes' ||
+                    item['Are you willing to be the Lead LF for Computer Programming Lab?'] === 'Yes'
+                ), headers: [
+                    'Name', 'Mobile', 'Email', 
+                    'Regular LF', 'Lead LF', 
+                    'Current Courses', 'Courses Teaching'
+                ]},
+                { title: "All Digital Electronics LFs", data: jsonData.filter(item => 
+                    item['Are you willing to be the LF for Digital Electronics and Microprocessors Lab?'] === 'Yes' ||
+                    item['Are you willing to be the Lead LF for Digital Electronics and Microprocessors Lab?'] === 'Yes'
+                ), headers: [
+                    'Name', 'Mobile', 'Email', 
+                    'Regular LF', 'Lead LF', 
+                    'Current Courses', 'Courses Teaching'
+                ]},
+                { title: "Top 10 Busiest Faculty", data: [...jsonData].sort((a, b) => {
+                    const aWorkload = parseInt(a['Number of courses an individual is currently teaching or assisting as an LF at BITS.']) || 0;
+                    const bWorkload = parseInt(b['Number of courses an individual is currently teaching or assisting as an LF at BITS.']) || 0;
+                    return bWorkload - aWorkload;
+                }).slice(0, 10), headers: [
+                    'Name', 'Current Courses', 'Courses Teaching',
+                    'Computer LF', 'Digital LF'
+                ]}
+            ];
+
+            for (const config of tableConfigs) {
+                if (config.data.length > 0) {
+                    doc.text(config.title, 14, 15);
+                    
+                    const tableData = config.data.map(item => {
+                        return config.headers.map(header => {
+                            if (header === 'Current Courses') {
+                                return parseInt(item['Number of courses an individual is currently teaching or assisting as an LF at BITS.']) || 0;
+                            }
+                            else if (header === 'Courses Teaching') {
+                                return item['Name(s) of the courses currently teaching or assisting as LF at BITS'] || 'None';
+                            }
+                            else if (header === 'Lead (Computer)') {
+                                return item['Are you willing to be the Lead LF for Computer Programming Lab?'] || 'No';
+                            }
+                            else if (header === 'Lead (Digital)') {
+                                return item['Are you willing to be the Lead LF for Digital Electronics and Microprocessors Lab?'] || 'No';
+                            }
+                            else if (header === 'Regular LF') {
+                                if (config.title.includes('Computer')) {
+                                    return item['Are you willing to be the LF for Computer Programming Lab?'] || 'No';
+                                } else {
+                                    return item['Are you willing to be the LF for Digital Electronics and Microprocessors Lab?'] || 'No';
+                                }
+                            }
+                            else if (header === 'Lead LF') {
+                                if (config.title.includes('Computer')) {
+                                    return item['Are you willing to be the Lead LF for Computer Programming Lab?'] || 'No';
+                                } else {
+                                    return item['Are you willing to be the Lead LF for Digital Electronics and Microprocessors Lab?'] || 'No';
+                                }
+                            }
+                            else if (header === 'Computer LF') {
+                                return item['Are you willing to be the LF for Computer Programming Lab?'] || 'No';
+                            }
+                            else if (header === 'Digital LF') {
+                                return item['Are you willing to be the LF for Digital Electronics and Microprocessors Lab?'] || 'No';
+                            }
+                            else if (header.toLowerCase().includes('mobile')) {
+                                const phone = item['Mobile number'] ? item['Mobile number'].toString() : '';
+                                return phone.replace(/\D/g, '');
+                            }
+                            else if (header === 'Email') {
+                                return item['Email Address'] || 'N/A';
+                            }
+                            return item[header] || 'N/A';
+                        });
+                    });
+
+                    doc.autoTable({
+                        head: [config.headers],
+                        body: tableData,
+                        startY: 25,
+                        styles: {
+                            fontSize: 7,
+                            cellPadding: 2,
+                            overflow: 'linebreak'
+                        },
+                        margin: { top: 25 }
+                    });
+                    doc.addPage();
+                }
+            }
+
+            // Save the PDF
+            doc.save('full_dashboard_report.pdf');
+        }
+    </script>
+</body>
+</html>
